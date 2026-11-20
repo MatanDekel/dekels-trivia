@@ -308,13 +308,23 @@ async function renderBoard(view) {
   view.querySelectorAll('.chip').forEach((b) => (b.onclick = () => { boardCat = b.dataset.c; renderBoard(view); }));
   const scores = await getScores(true);
   const rows = boardCat === 'all' ? scores.filter((s) => !s.private) : scores.filter((s) => s.category === boardCat);
-  const by = new Map();
-  for (const s of rows) {
-    const cur = by.get(s.name) || { name: s.name, best: 0, total: 0, games: 0 };
-    cur.best = Math.max(cur.best, s.score); cur.total += s.score; cur.games++;
-    by.set(s.name, cur);
+  let list;
+  if (boardCat === 'all') {
+    // "הכול": כל משחק בנפרד, בלי לחבר משחקים של אותו שחקן
+    list = [...rows].sort((a, b) => b.score - a.score).slice(0, 50).map((g) => ({
+      name: g.name, value: g.score,
+      sub: `${categoryById(g.category)?.name || g.categoryName || ''} · ${g.correct}/${g.total} נכונות`,
+    }));
+  } else {
+    const by = new Map();
+    for (const s of rows) {
+      const cur = by.get(s.name) || { name: s.name, value: 0, games: 0 };
+      cur.value = Math.max(cur.value, s.score); cur.games++;
+      by.set(s.name, cur);
+    }
+    list = [...by.values()].sort((a, b) => b.value - a.value)
+      .map((p) => ({ ...p, sub: p.games === 1 ? 'משחק אחד' : p.games + ' משחקים' }));
   }
-  const list = [...by.values()].sort((a, b) => (boardCat === 'all' ? b.total - a.total : b.best - a.best));
   const el = document.getElementById('board-list');
   if (!el) return;
   if (!list.length) {
@@ -327,13 +337,13 @@ async function renderBoard(view) {
     return;
   }
   const medal = ['🥇', '🥈', '🥉'];
-  el.innerHTML = `<p class="muted small">${boardCat === 'all' ? 'סך כל הנקודות מכל המשחקים' : 'השיא של כל שחקן בנושא הזה'}</p>
+  el.innerHTML = `<p class="muted small">${boardCat === 'all' ? 'המשחקים הכי טובים מכל הנושאים' : 'השיא של כל שחקן בנושא הזה'}</p>
     <ol class="board">${list.map((p, i) => `
       <li class="${p.name === player() ? 'me' : ''}">
         <span class="rank">${medal[i] || i + 1}</span>
         ${letter(p.name)}
-        <span class="pname">${esc(p.name)}<small>${p.games === 1 ? 'משחק אחד' : p.games + ' משחקים'}</small></span>
-        <span class="pscore">${boardCat === 'all' ? p.total : p.best}</span>
+        <span class="pname">${esc(p.name)}<small>${esc(p.sub)}</small></span>
+        <span class="pscore">${p.value}</span>
       </li>`).join('')}</ol>
     ${isAdmin() ? '<button class="btn btn-ghost" id="manage">👑 ניהול תוצאות</button>' : ''}`;
   const m = document.getElementById('manage'); if (m) m.onclick = () => { tab = 'admin'; renderShell(); };
