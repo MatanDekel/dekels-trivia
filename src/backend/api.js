@@ -30,6 +30,7 @@ export function createApiBackend() {
     async adminLogout() { setToken(''); },
     getScores: () => call('/api/scores'),
     saveScore: (s) => call('/api/scores', { method: 'POST', body: s }),
+    updateScore: (id, score) => call('/api/scores', { method: 'PATCH', body: { id, score } }),
     deleteScores: (ids) => call('/api/scores', { method: 'DELETE', body: { ids } }),
     getCategories: () => call('/api/categories'),
     async saveCategory(cat) { return (await call('/api/categories', { method: 'POST', body: cat })).id; },

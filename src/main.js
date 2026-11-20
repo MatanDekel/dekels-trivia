@@ -393,10 +393,18 @@ async function renderAdmin(view) {
       <summary>${letter(n, 32)}<b class="grow">${esc(n)}</b><small>${games.length === 1 ? "משחק אחד" : games.length + " משחקים"}</small></summary>
       <ul>${games.map((g) => `<li>
         <div class="grow"><b>${g.score}</b> · ${esc(catName(g))}${g.private ? ' 🔒' : ''}<small>${g.correct}/${g.total} נכונות · ${fmtDate(g.at)}</small></div>
+        <button class="icon-btn small" data-minus="${g.id}" aria-label="הורדת נקודות">➖</button>
         <button class="icon-btn small" data-del="${g.id}" aria-label="מחיקה">🗑️</button></li>`).join('')}</ul>
       <button class="btn btn-ghost danger" data-delall="${i}">מחיקת כל התוצאות של ${esc(n)}</button>
     </details>`;
   }).join('');
+  el.querySelectorAll('[data-minus]').forEach((b) => (b.onclick = async () => {
+    const g = scores.find((x) => x.id === b.dataset.minus);
+    const amount = await askDeduct(g);
+    if (!amount) return;
+    try { await backend.updateScore(g.id, Math.max(0, g.score - amount)); scoresCache = null; toast(`${g.name}: הורדו ${Math.min(amount, g.score)} נקודות`); renderAdmin(view); }
+    catch (e) { console.error(e); toast('העדכון נכשל'); }
+  }));
   el.querySelectorAll('[data-del]').forEach((b) => (b.onclick = async () => {
     if (!(await ask('למחוק את התוצאה הזאת?', 'מחיקה'))) return;
     try { await backend.deleteScores([b.dataset.del]); scoresCache = null; toast('התוצאה נמחקה'); renderAdmin(view); }
@@ -408,6 +416,36 @@ async function renderAdmin(view) {
     try { await backend.deleteScores(by.get(n).map((s) => s.id)); scoresCache = null; toast('התוצאות נמחקו'); renderAdmin(view); }
     catch (e) { console.error(e); toast('המחיקה נכשלה'); }
   }));
+}
+
+function askDeduct(g) {
+  return new Promise((resolve) => {
+    const d = modal(`
+      <h2>➖ הורדת נקודות</h2>
+      <p class="muted small">${esc(g.name)} · ${esc(categoryById(g.category)?.name || g.categoryName || '')} · כרגע ${g.score} נקודות</p>
+      <div class="quick-amounts">${[10, 50, 100].map((n) => `<button class="chip" data-amt="${n}">‎-${n}</button>`).join('')}</div>
+      <form id="df" class="stack">
+        <input id="damt" type="number" inputmode="numeric" min="1" max="${g.score}" placeholder="כמה נקודות להוריד?">
+        <p class="small" id="dprev"></p>
+        <button class="btn btn-primary">הורדה</button>
+      </form>
+      <button class="btn btn-ghost" id="dcancel">ביטול</button>`);
+    const input = d.querySelector('#damt');
+    const prev = () => {
+      const n = parseInt(input.value, 10);
+      d.querySelector('#dprev').textContent = n > 0 ? `הציון החדש: ${Math.max(0, g.score - n)}` : '';
+    };
+    input.oninput = prev;
+    d.querySelectorAll('[data-amt]').forEach((b) => (b.onclick = () => { input.value = b.dataset.amt; prev(); }));
+    d.querySelector('#dcancel').onclick = () => { d.remove(); resolve(0); };
+    d.querySelector('#df').onsubmit = (e) => {
+      e.preventDefault();
+      const n = parseInt(input.value, 10);
+      if (!(n > 0)) { input.classList.add('invalid'); return; }
+      d.remove(); resolve(n);
+    };
+    setTimeout(() => input.focus(), 50);
+  });
 }
 
 function renderEditor(cat) {

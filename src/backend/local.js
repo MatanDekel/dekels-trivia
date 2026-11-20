@@ -20,6 +20,7 @@ export function createLocalBackend() {
     async adminLogout() { admin = false; try { sessionStorage.removeItem('trivia-admin'); } catch {} },
     async getScores() { return db.scores.filter((s) => admin || !s.private); },
     async saveScore(s) { db.scores.push({ ...s, id: uid(), at: Date.now() }); persist(); },
+    async updateScore(id, score) { const r = db.scores.find((s) => s.id === id); if (r) { r.score = score; persist(); } },
     async deleteScores(ids) { const set = new Set(ids); db.scores = db.scores.filter((s) => !set.has(s.id)); persist(); },
     async getCategories() { return db.categories.filter((c) => admin || !c.hidden); },
     async saveCategory(cat) {

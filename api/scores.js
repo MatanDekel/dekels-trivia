@@ -36,6 +36,20 @@ export default guard(async (req, res) => {
     return send(res, 200, { ok: true, id: rec.i });
   }
 
+  if (req.method === 'PATCH') {
+    if (!admin) return send(res, 403, { error: 'forbidden' });
+    const id = String(req.body?.id || '');
+    const score = Number(req.body?.score);
+    if (!Number.isInteger(score) || score < 0 || score > 2000) return send(res, 400, { error: 'bad score' });
+    const blob = (await listAll('scores/')).find((b) => parse(b)?.id === id);
+    if (!blob) return send(res, 404, { error: 'not found' });
+    const rec = b64.dec(blob.pathname.slice('scores/'.length).replace(/\.txt$/, ''));
+    rec.s = score;
+    await put(`scores/${b64.enc(rec)}.txt`, '1', { access: 'public', addRandomSuffix: false, contentType: 'text/plain' });
+    await del(blob.url);
+    return send(res, 200, { ok: true, score });
+  }
+
   if (req.method === 'DELETE') {
     if (!admin) return send(res, 403, { error: 'forbidden' });
     const ids = new Set((req.body?.ids || []).map(String));
