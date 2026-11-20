@@ -1,3 +1,4 @@
+import { EXTRA } from './questions-extra.js';
 // כל שאלה: q = השאלה, a = התשובה הנכונה (תמיד ראשונה), w = תשובות שגויות. הסדר מעורבב במשחק.
 export const CATEGORIES = [
   {
@@ -141,6 +142,8 @@ export const CATEGORIES = [
     ],
   },
 ];
+
+for (const c of CATEGORIES) if (EXTRA[c.id]) c.questions.push(...EXTRA[c.id]);
 
 export const MIX = { id: 'mix', name: 'מיקס מכל הנושאים', emoji: '🎲', color: 'var(--warning)' };
 export const allQuestions = () => CATEGORIES.flatMap((c) => c.questions.map((q) => ({ ...q, cat: c.id })));
