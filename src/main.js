@@ -1,20 +1,11 @@
 import './style.css';
 import { CATEGORIES, MIX } from './questions.js';
 import { createLocalBackend } from './backend/local.js';
+import { createApiBackend } from './backend/api.js';
 
 const QUESTIONS_PER_GAME = 10;
 const SECONDS = 20;
 const ICON = `<svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#BDB2FF"/><path d="M256 92c-96 0-168 62-168 146 0 47 23 88 61 115l-17 67 72-40c16 4 34 6 52 6 96 0 168-62 168-148S352 92 256 92z" fill="#FFF8F0"/><path d="M206 202c0-30 23-52 52-52 30 0 52 20 52 46 0 22-12 33-28 43-14 9-20 16-20 32v10" fill="none" stroke="#6FB38C" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/><circle cx="262" cy="336" r="19" fill="#6FB38C"/><circle cx="392" cy="128" r="30" fill="#FFD6A5"/></svg>`;
-
-const env = import.meta.env;
-const fbConfig = {
-  apiKey: env.VITE_FIREBASE_API_KEY,
-  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: env.VITE_FIREBASE_APP_ID,
-};
 
 const $app = document.getElementById('app');
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -82,17 +73,12 @@ function modal(html) {
 /* ---------- boot ---------- */
 async function boot() {
   try {
-    if (fbConfig.apiKey && fbConfig.projectId) {
-      const { createFirebaseBackend } = await import('./backend/firebase.js');
-      backend = createFirebaseBackend(fbConfig);
-    } else {
-      backend = createLocalBackend();
-    }
+    backend = createApiBackend();
     await backend.init();
   } catch (e) {
-    console.error(e);
+    // אין שרת (פיתוח מקומי / תצוגה מקדימה) → מצב מקומי
+    console.warn('API unavailable, using local mode', e);
     backend = createLocalBackend();
-    toast('אין חיבור לשרת — התוצאות יישמרו רק במכשיר');
   }
   await loadCategories();
   renderShell();
